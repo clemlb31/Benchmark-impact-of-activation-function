@@ -26,3 +26,4 @@ def brevage_preprocessing(df: pd.DataFrame) -> pd.DataFrame:
     df.fillna(0, inplace=True)
     
     return df
+
