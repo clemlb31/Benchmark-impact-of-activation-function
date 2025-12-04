@@ -50,5 +50,5 @@ def train_model(model, criterion, optimizer,  num_epochs,train_loader, val_loade
         
         
         print(f'Epoch {epoch+1}/{num_epochs}, Training Loss: {epoch_loss:.4f}, Validation Loss: {val_epoch_loss:.4f}')
-        return history
+    return history
         
