@@ -1,6 +1,14 @@
 import torch
+from torch import nn
 
 
+def activation_function(mode):
+    if mode == 'relu':
+        return nn.ReLU()
+    elif mode == 'gelu':
+        return nn.GELU()
+    else :
+        raise ValueError("bad activation function (relu,gelu)")
 
 
 def train_model(model, criterion, optimizer,  num_epochs,train_loader, val_loader=None) -> dict:

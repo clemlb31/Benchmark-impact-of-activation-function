@@ -1,6 +1,11 @@
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
-def brevage_preprocessing(df: pd.DataFrame) -> pd.DataFrame:
+import torch
+from torch import nn
+from training_functions import activation_function
+def brevage_preprocessing(df: pd.DataFrame, val_size, test_size) -> tuple:
     df = df.copy()
     # date processing
     df['Order_Date'] = pd.to_datetime(df['Order_Date'])
@@ -25,5 +30,39 @@ def brevage_preprocessing(df: pd.DataFrame) -> pd.DataFrame:
     # Handle missing values by filling with 0
     df.fillna(0, inplace=True)
     
-    return df
 
+
+    X_brevage = df.drop('Total_Price', axis=1)
+    y_brevage = df['Total_Price']
+    
+    assert val_size + test_size < 1
+
+    val_size_adjusted = val_size / (1 - test_size)
+    X_temp, X_test, y_temp, y_test = train_test_split(X_brevage, y_brevage, test_size=test_size, random_state=1)
+    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=val_size_adjusted, random_state=1)
+    
+    scaler = StandardScaler()
+
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_val_scaled = scaler.transform(X_val)
+    X_test_scaled = scaler.transform(X_test)
+
+
+    return X_train_scaled, X_val_scaled, X_test_scaled, y_train, y_val, y_test
+
+
+
+class brevage_model(nn.Module):
+    def __init__(self, input_dim, mode):
+        super(brevage_model, self).__init__()
+        self.fc1 = nn.Linear(input_dim, 64)
+        self.fc2 = nn.Linear(64, 32)
+        self.fc3 = nn.Linear(32, 1)
+        self.activation = activation_function(mode)
+        self.mode = mode
+        
+    def forward(self, x):
+        x = self.activation(self.fc1(x))
+        x = self.activation(self.fc2(x))
+        x = self.fc3(x)
+        return x
