@@ -5,7 +5,7 @@ from sklearn.preprocessing import OneHotEncoder
 import torch
 from torch import nn
 from training_functions import activation_function
-def brevage_preprocessing(df: pd.DataFrame, val_size, test_size) -> tuple:
+def brevage_preprocessing(df: pd.DataFrame, val_size, test_size,random_state=1) -> tuple:
     df = df.copy()
     # date processing
     df['Order_Date'] = pd.to_datetime(df['Order_Date'])
@@ -38,8 +38,8 @@ def brevage_preprocessing(df: pd.DataFrame, val_size, test_size) -> tuple:
     assert val_size + test_size < 1
 
     val_size_adjusted = val_size / (1 - test_size)
-    X_temp, X_test, y_temp, y_test = train_test_split(X_brevage, y_brevage, test_size=test_size, random_state=1)
-    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=val_size_adjusted, random_state=1)
+    X_temp, X_test, y_temp, y_test = train_test_split(X_brevage, y_brevage, test_size=test_size, random_state=random_state)
+    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=val_size_adjusted, random_state=random_state)
     
     scaler = StandardScaler()
 
@@ -47,14 +47,31 @@ def brevage_preprocessing(df: pd.DataFrame, val_size, test_size) -> tuple:
     X_val_scaled = scaler.transform(X_val)
     X_test_scaled = scaler.transform(X_test)
 
+    train_dataset = BrevageDataset(X_train_scaled, y_train)
+    val_dataset = BrevageDataset(X_val_scaled, y_val)
+    test_dataset = BrevageDataset(X_test_scaled, y_test)
 
-    return X_train_scaled, X_val_scaled, X_test_scaled, y_train, y_val, y_test
+    return train_dataset, val_dataset, test_dataset
 
 
+class BrevageDataset(torch.utils.data.Dataset):
+    def __init__(self, features, targets):
+        self.features = torch.tensor(features, dtype=torch.float32)
+        self.targets = torch.tensor(targets.values, dtype=torch.float32).unsqueeze(1)
+        
+    def __len__(self):
+        return len(self.features)
+    
+    def __getitem__(self, idx):
+        return self.features[idx], self.targets[idx]
+    def count_features(self):
+        return self.features.shape[1]
+    
 
-class brevage_model(nn.Module):
+
+class Brevage_model(nn.Module):
     def __init__(self, input_dim, mode):
-        super(brevage_model, self).__init__()
+        super(Brevage_model, self).__init__()
         self.fc1 = nn.Linear(input_dim, 64)
         self.fc2 = nn.Linear(64, 32)
         self.fc3 = nn.Linear(32, 1)
@@ -66,3 +83,5 @@ class brevage_model(nn.Module):
         x = self.activation(self.fc2(x))
         x = self.fc3(x)
         return x
+    
+
