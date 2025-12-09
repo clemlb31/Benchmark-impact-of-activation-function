@@ -5,6 +5,8 @@ from sklearn.preprocessing import OneHotEncoder
 import torch
 from torch import nn
 from training_functions import activation_function
+
+
 def brevage_preprocessing(df: pd.DataFrame, val_size, test_size,random_state=1) -> tuple:
     df = df.copy()
     # date processing
@@ -30,7 +32,7 @@ def brevage_preprocessing(df: pd.DataFrame, val_size, test_size,random_state=1) 
     # Handle missing values by filling with 0
     df.fillna(0, inplace=True)
     
-
+ 
 
     X_brevage = df.drop('Total_Price', axis=1)
     y_brevage = df['Total_Price']
@@ -70,17 +72,26 @@ class BrevageDataset(torch.utils.data.Dataset):
 
 
 class Brevage_model(nn.Module):
-    def __init__(self, input_dim, mode):
+    def __init__(self, input_dim, mode,use_batch_norm=False):
         super(Brevage_model, self).__init__()
         self.fc1 = nn.Linear(input_dim, 64)
+        self.bn1 = nn.BatchNorm1d(64) if use_batch_norm else None
         self.fc2 = nn.Linear(64, 32)
+        self.bn2 = nn.BatchNorm1d(32) if use_batch_norm else None
         self.fc3 = nn.Linear(32, 1)
         self.activation = activation_function(mode)
-        self.mode = mode
         
+        self.mode = mode
+        self.use_batch_norm = use_batch_norm
     def forward(self, x):
-        x = self.activation(self.fc1(x))
-        x = self.activation(self.fc2(x))
+        x = self.fc1(x)
+        if self.bn1 is not None:
+            x = self.bn1(x)
+        x = self.activation(x)
+        x = self.fc2(x)
+        if self.bn2 is not None:
+            x = self.bn2(x)
+        x = self.activation(x)
         x = self.fc3(x)
         return x
     

@@ -10,16 +10,8 @@ import torch.nn as nn
 
 
 def animals10_preprocessing(data_path, test_size=0.2, val_size=0.2, image_size=256, random_state=1, subset=1) -> tuple:
-    """
-    Preprocess images from the Animals10 dataset.
-    
-    Args:
-        data_path: Path to the raw-img directory containing class folders
-        test_size: Proportion of data for testing
-        val_size: Proportion of data for validation 
-        image_size: Target size for images
-        random_state: Random seed for reproducibility
-    """
+
+
     train_transform = transforms.Compose([
         transforms.Resize((image_size, image_size)),
         transforms.RandomHorizontalFlip(p=0.5),    
@@ -35,7 +27,7 @@ def animals10_preprocessing(data_path, test_size=0.2, val_size=0.2, image_size=2
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
     
-    image_paths = []
+    image_paths = [] 
     labels = []
     class_names = []
     
@@ -118,55 +110,44 @@ class Animals10Dataset(Dataset):
         return 3 * image_size * image_size
 
 class Animals10_model(torch.nn.Module):
-    def __init__(self, num_classes, mode):
-        self.mode = mode
+    def __init__(self, num_classes, mode, use_batch_norm=False):
         super(Animals10_model, self).__init__()
-        self.layer1 = nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            activation_function(mode),     
-            nn.MaxPool2d(kernel_size=2, stride=2)
-        )
-        self.layer2 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            activation_function(mode), 
-            nn.MaxPool2d(2, 2)
-        )
-        
-        self.layer3 = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            activation_function(mode), 
-            nn.MaxPool2d(2, 2)
-        )
-        
-        
-        self.layer4 = nn.Sequential(
-            nn.Conv2d(128, 256, kernel_size=3, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2)
-        )
-                
+        self.mode = mode
+
+        def conv_block(in_c, out_c):
+            layers = [
+                nn.Conv2d(in_c, out_c, kernel_size=3, padding=1),
+            ]
+            if use_batch_norm:
+                layers.append(nn.BatchNorm2d(out_c))
+            layers.extend([
+                activation_function(mode),
+                nn.MaxPool2d(2, 2),
+            ])
+            return nn.Sequential(*layers)
+
+        self.layer1 = conv_block(3, 32)
+        self.layer2 = conv_block(32, 64)
+        self.layer3 = conv_block(64, 128)
+
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
-        
         self.classifier = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(256, 512), 
+            nn.Linear(128, 256),
             activation_function(mode),
             nn.Dropout(0.5),
-            nn.Linear(512, num_classes)
+            nn.Linear(256, num_classes),
         )
 
+
+
     def forward(self, x):
-            x = self.layer1(x)
-            x = self.layer2(x)
-            x = self.layer3(x)
-            x = self.layer4(x)
-            x = self.global_pool(x)
-            x = self.classifier(x)
-            return x
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.global_pool(x)
+        x = self.classifier(x)
+        return x
 
 
 def get_num_classes(data_path):
